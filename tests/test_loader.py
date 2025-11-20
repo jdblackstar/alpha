@@ -80,4 +80,3 @@ def test_load_falls_back_to_yfinance(monkeypatch: pytest.MonkeyPatch) -> None:
     }
     assert frame.index.name == "datetime"
     assert frame.iloc[-1]["close"] == pytest.approx(3.2)
-
