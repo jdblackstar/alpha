@@ -38,7 +38,11 @@ class DataLoader:
         last_error: Optional[Exception] = None
 
         for getter in loaders:
-            frame = getter()
+            try:
+                frame = getter()
+            except ImportError as exc:
+                last_error = exc
+                continue
             if frame is None:
                 continue
             try:
@@ -78,7 +82,7 @@ class DataLoader:
             yf = importlib.import_module("yfinance")
         except ModuleNotFoundError as exc:  # pragma: no cover
             raise ImportError(
-                "yfinance is required to pull data when no CSV or URL is provided."
+                "yfinance is required to fetch data via the yfinance fallback."
             ) from exc
 
         df: DataFrame = yf.download(symbol, start=start, end=end)

@@ -109,3 +109,26 @@ def test_load_falls_back_to_yfinance(monkeypatch: pytest.MonkeyPatch) -> None:
     }
     assert frame.index.name == "datetime"
     assert frame.iloc[-1]["close"] == pytest.approx(3.2)
+
+
+def test_load_handles_missing_yfinance(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    original_import = importlib.import_module
+
+    def fake_import(name: str):
+        if name == "yfinance":
+            raise ModuleNotFoundError("yfinance missing")
+        return original_import(name)
+
+    monkeypatch.setattr(importlib, "import_module", fake_import)
+
+    with pytest.raises(ValueError) as excinfo:
+        DataLoader.load(
+            "AAPL",
+            filepath=str(tmp_path / "missing.csv"),
+            url=str(tmp_path / "missing-url.csv"),
+        )
+
+    assert "could not fetch data" in str(excinfo.value)
+    assert isinstance(excinfo.value.__cause__, ImportError)
