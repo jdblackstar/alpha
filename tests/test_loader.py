@@ -45,6 +45,35 @@ def test_load_uses_url_when_filepath_absent(tmp_path: Path) -> None:
     assert frame.loc["2024-01-02", "close"] == 105
 
 
+def test_load_falls_back_to_url_when_csv_empty(tmp_path: Path) -> None:
+    empty_csv = tmp_path / "empty.csv"
+    empty_csv.write_text("Date,Open,High,Low,Close,Volume\n", encoding="utf-8")
+    remote_csv = _write_sample_csv(tmp_path / "remote.csv")
+
+    frame = DataLoader.load("AAPL", filepath=str(empty_csv), url=remote_csv.as_uri())
+
+    assert frame.shape == (2, 5)
+    assert frame.loc["2024-01-02", "high"] == 110
+
+
+def test_load_falls_back_to_url_when_csv_invalid(tmp_path: Path) -> None:
+    invalid_csv = tmp_path / "invalid.csv"
+    invalid_csv.write_text(
+        "\n".join(
+            [
+                "Date,Close",
+                "2024-01-02,105",
+            ]
+        ),
+        encoding="utf-8",
+    )
+    remote_csv = _write_sample_csv(tmp_path / "remote.csv")
+
+    frame = DataLoader.load("AAPL", filepath=str(invalid_csv), url=remote_csv.as_uri())
+
+    assert frame.loc["2024-01-02", "close"] == 105
+
+
 def test_load_falls_back_to_yfinance(monkeypatch: pytest.MonkeyPatch) -> None:
     original_import = importlib.import_module
     captured: dict[str, object] = {}

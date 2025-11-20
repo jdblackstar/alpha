@@ -1,9 +1,10 @@
 from __future__ import annotations
 
-from typing import Optional
+from typing import Callable, Optional
 
 import pandas as pd
 from pandas import DataFrame
+from pandas.errors import EmptyDataError, ParserError
 
 
 class DataLoader:
@@ -27,31 +28,39 @@ class DataLoader:
         It always returns a DataFrame indexed by datetime with columns
         ['open', 'high', 'low', 'close', 'volume'].
         """
-        frame: Optional[DataFrame] = None
-
+        loaders: list[Callable[[], Optional[DataFrame]]] = []
         if filepath:
-            frame = DataLoader._from_csv(filepath)
-        if frame is None and url:
-            frame = DataLoader._from_url(url)
-        if frame is None:
-            frame = DataLoader._from_yfinance(symbol, start, end)
+            loaders.append(lambda: DataLoader._from_csv(filepath))
+        if url:
+            loaders.append(lambda: DataLoader._from_url(url))
+        loaders.append(lambda: DataLoader._from_yfinance(symbol, start, end))
 
-        if frame is None:
-            raise ValueError(
-                "DataLoader.load could not fetch data from any provided source."
-            )
+        last_error: Optional[Exception] = None
 
-        return DataLoader._clean(frame)
+        for getter in loaders:
+            frame = getter()
+            if frame is None:
+                continue
+            try:
+                return DataLoader._clean(frame)
+            except ValueError as exc:
+                last_error = exc
+                continue
+
+        error_message = "DataLoader.load could not fetch data from any provided source."
+        if last_error:
+            raise ValueError(error_message) from last_error
+        raise ValueError(error_message)
 
     @staticmethod
-    def _from_csv(filepath: str) -> DataFrame:
+    def _from_csv(filepath: str) -> Optional[DataFrame]:
         """Read raw OHLCV data from a CSV file."""
-        return pd.read_csv(filepath)
+        return DataLoader._read_csv_source(filepath)
 
     @staticmethod
-    def _from_url(url: str) -> DataFrame:
+    def _from_url(url: str) -> Optional[DataFrame]:
         """Read raw OHLCV data from an HTTP-accessible CSV file."""
-        return pd.read_csv(url)
+        return DataLoader._read_csv_source(url)
 
     @staticmethod
     def _from_yfinance(
@@ -77,6 +86,17 @@ class DataLoader:
             return None
 
         return df.reset_index()
+
+    @staticmethod
+    def _read_csv_source(path_or_url: str) -> Optional[DataFrame]:
+        """Read a CSV file, returning None when data is missing or unreadable."""
+        try:
+            frame = pd.read_csv(path_or_url)
+        except (FileNotFoundError, OSError, ParserError, EmptyDataError):
+            return None
+        if frame.empty:
+            return None
+        return frame
 
     @staticmethod
     def _clean(df: DataFrame) -> DataFrame:
