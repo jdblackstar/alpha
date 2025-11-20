@@ -5,7 +5,7 @@ This repo hosts my personal finance research code. Most helpers live in the
 mode.
 
 ### Quick start
-- Install [uv](https://docs.astral.sh/uv/) and clone the repo.
+- Install [uv](https://docs.astral.sh/uv/) and clone this repo.
 - Create the environment and install deps: `uv sync`.
 - Make the `qlib` package importable everywhere: `uv pip install -e .`
 - Run the test suite anytime with `uv run pytest`.
