@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Callable, Optional
+from typing import Any, Callable, Hashable, Optional
 
 import pandas as pd
 from pandas import DataFrame
@@ -106,6 +106,7 @@ class DataLoader:
     def _clean(df: DataFrame) -> DataFrame:
         """Standardize names, sort by datetime, and drop missing rows."""
         frame = df.copy()
+        frame = DataLoader._flatten_columns(frame)
         frame = DataLoader._ensure_datetime_index(frame)
         frame = DataLoader._standardize_columns(frame)
         frame = DataLoader._sort_by_date(frame)
@@ -115,7 +116,7 @@ class DataLoader:
     @staticmethod
     def _standardize_columns(df: DataFrame) -> DataFrame:
         """Lowercase column names and enforce the OHLCV schema."""
-        normalized = df.rename(columns=lambda col: col.strip().lower())
+        normalized = df.rename(columns=lambda col: str(col).strip().lower())
         required_columns = ["open", "high", "low", "close", "volume"]
 
         missing = [col for col in required_columns if col not in normalized.columns]
@@ -123,6 +124,34 @@ class DataLoader:
             raise ValueError(f"Missing required OHLCV columns: {missing}")
 
         return normalized[required_columns]
+
+    @staticmethod
+    def _flatten_columns(df: DataFrame) -> DataFrame:
+        """
+        Reduce MultiIndex columns to their first non-empty level.
+
+        yfinance returns multi-level columns even when requesting a single symbol.
+        We only need the field names (open/high/low/close/volume), so drop the rest.
+        """
+        if isinstance(df.columns, pd.MultiIndex):
+            frame = df.copy()
+            frame.columns = [
+                DataLoader._first_non_empty_label(col) for col in df.columns
+            ]
+            return frame
+        return df
+
+    @staticmethod
+    def _first_non_empty_label(label: Hashable | tuple[Any, ...]) -> str:
+        if isinstance(label, tuple):
+            for entry in label:
+                if entry is None:
+                    continue
+                text = str(entry).strip()
+                if text:
+                    return text
+            return ""
+        return str(label)
 
     @staticmethod
     def _ensure_datetime_index(df: DataFrame) -> DataFrame:
