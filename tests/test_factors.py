@@ -10,7 +10,9 @@ from qlib.factors.volatility import Volatility
 
 def _sample_data() -> pd.DataFrame:
     dates = pd.date_range("2024-01-01", periods=8, freq="D")
-    close = pd.Series([100.0, 101.0, 103.0, 102.0, 105.0, 110.0, 108.0, 111.0], index=dates)
+    close = pd.Series(
+        [100.0, 101.0, 103.0, 102.0, 105.0, 110.0, 108.0, 111.0], index=dates
+    )
     return pd.DataFrame({"close": close})
 
 
@@ -38,5 +40,7 @@ def test_volatility_matches_rolling_std() -> None:
     data = _sample_data()
     factor = Volatility(window=3)
     result = factor.compute(data)
-    expected = data["close"].pct_change().rolling(3, min_periods=3).std().rename("volatility")
+    expected = (
+        data["close"].pct_change().rolling(3, min_periods=3).std().rename("volatility")
+    )
     pdt.assert_series_equal(result, expected)

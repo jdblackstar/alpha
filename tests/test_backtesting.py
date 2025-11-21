@@ -37,7 +37,9 @@ def test_backtester_applies_commission_costs() -> None:
 
 def test_backtester_raises_when_no_overlap() -> None:
     prices = _prices()
-    signal = pd.Series([1.0, 1.0], index=pd.date_range("2023-12-01", periods=2, freq="D"))
+    signal = pd.Series(
+        [1.0, 1.0], index=pd.date_range("2023-12-01", periods=2, freq="D")
+    )
     bt = Backtester(prices)
 
     try:
@@ -45,4 +47,6 @@ def test_backtester_raises_when_no_overlap() -> None:
     except ValueError as exc:
         assert "timestamps" in str(exc)
     else:
-        raise AssertionError("Backtester should raise when signal and prices do not overlap")
+        raise AssertionError(
+            "Backtester should raise when signal and prices do not overlap"
+        )

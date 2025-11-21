@@ -135,7 +135,9 @@ class DataLoader:
         """
         if isinstance(df.columns, pd.MultiIndex):
             frame = df.copy()
-            frame.columns = [DataLoader._first_non_empty_label(col) for col in df.columns]
+            frame.columns = [
+                DataLoader._first_non_empty_label(col) for col in df.columns
+            ]
             return frame
         return df
 
