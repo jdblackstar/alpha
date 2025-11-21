@@ -111,6 +111,43 @@ def test_load_falls_back_to_yfinance(monkeypatch: pytest.MonkeyPatch) -> None:
     assert frame.iloc[-1]["close"] == pytest.approx(3.2)
 
 
+def test_load_flattens_multiindex_columns(monkeypatch: pytest.MonkeyPatch) -> None:
+    original_import = importlib.import_module
+
+    def fake_import(name: str):
+        if name == "yfinance":
+
+            class DummyYF:
+                @staticmethod
+                def download(symbol: str, start=None, end=None):
+                    idx = pd.date_range("2024-02-01", periods=2, freq="D", name="Date")
+                    columns = pd.MultiIndex.from_tuples(
+                        [
+                            ("Open", symbol),
+                            ("High", symbol),
+                            ("Low", symbol),
+                            ("Close", symbol),
+                            ("Adj Close", symbol),
+                            ("Volume", symbol),
+                        ]
+                    )
+                    data = [
+                        [10.0, 12.0, 9.0, 11.0, 11.5, 1_000],
+                        [11.0, 13.0, 10.0, 12.0, 12.5, 1_500],
+                    ]
+                    return pd.DataFrame(data, index=idx, columns=columns)
+
+            return DummyYF
+        return original_import(name)
+
+    monkeypatch.setattr(importlib, "import_module", fake_import)
+
+    frame = DataLoader.load("AAPL")
+
+    assert list(frame.columns) == ["open", "high", "low", "close", "volume"]
+    assert frame.iloc[0]["close"] == pytest.approx(11.0)
+
+
 def test_load_handles_missing_yfinance(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
