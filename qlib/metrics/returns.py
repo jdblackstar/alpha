@@ -15,13 +15,16 @@ def sharpe(rets: pd.Series, annualization: int = 252) -> float:
 
 
 def sortino(rets: pd.Series, annualization: int = 252) -> float:
-    """Return the annualized Sortino ratio."""
-    if rets.empty:
+    """Return the annualized Sortino ratio assuming a zero target return."""
+    clean = rets.dropna()
+    if clean.empty:
         return float("nan")
-    downside = rets[rets < 0].std()
-    if downside == 0:
+    downside = np.minimum(clean, 0.0)
+    downside_variance = (downside**2).mean()
+    if downside_variance == 0:
         return float("nan")
-    return (rets.mean() / downside) * np.sqrt(annualization)
+    downside_deviation = float(np.sqrt(downside_variance))
+    return (clean.mean() / downside_deviation) * np.sqrt(annualization)
 
 
 def max_drawdown(rets: pd.Series) -> float:

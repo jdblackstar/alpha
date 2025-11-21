@@ -16,15 +16,18 @@ def test_sharpe_matches_manual() -> None:
     assert np.isclose(sharpe(rets), expected)
 
 
-def test_sortino_handles_downside() -> None:
+def test_sortino_uses_downside_deviation() -> None:
     rets = _returns()
-    downside = rets[rets < 0].std()
-    expected = (rets.mean() / downside) * np.sqrt(252)
-    result = sortino(rets)
-    if np.isnan(expected):
-        assert np.isnan(result)
-    else:
-        assert np.isclose(result, expected)
+    clean = rets.dropna()
+    downside = np.minimum(clean, 0.0)
+    downside_dev = np.sqrt((downside**2).mean())
+    expected = (clean.mean() / downside_dev) * np.sqrt(252)
+    assert np.isclose(sortino(rets), expected)
+
+
+def test_sortino_returns_nan_without_downside() -> None:
+    rets = pd.Series([0.01, 0.02, 0.03])
+    assert np.isnan(sortino(rets))
 
 
 def test_max_drawdown_returns_minimum() -> None:
