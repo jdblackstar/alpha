@@ -44,11 +44,13 @@ class MACDResult(NamedTuple):
             DataFrame with columns 'macd', 'signal', and 'histogram',
             indexed by the original datetime index.
         """
-        return pd.DataFrame({
-            "macd": self.line,
-            "signal": self.signal,
-            "histogram": self.histogram,
-        })
+        return pd.DataFrame(
+            {
+                "macd": self.line,
+                "signal": self.signal,
+                "histogram": self.histogram,
+            }
+        )
 
 
 class MACD:
@@ -143,4 +145,3 @@ class MACD:
         histogram.name = "histogram"
 
         return MACDResult(line=line, signal=signal, histogram=histogram)
-

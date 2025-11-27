@@ -74,4 +74,3 @@ class RSI(Factor):
 
         rsi.name = "rsi"
         return rsi
-

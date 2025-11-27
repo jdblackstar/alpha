@@ -1,5 +1,5 @@
 """Performance metrics utilities."""
 
-from .returns import sharpe, sortino, max_drawdown
+from .returns import max_drawdown, sharpe, sortino
 
 __all__ = ["sharpe", "sortino", "max_drawdown"]

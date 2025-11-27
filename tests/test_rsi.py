@@ -119,4 +119,3 @@ def test_rsi_series_has_correct_name() -> None:
     factor = RSI(period=14)
     result = factor.compute(data)
     assert result.name == "rsi"
-

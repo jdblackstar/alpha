@@ -179,4 +179,3 @@ def test_macd_fast_must_be_less_than_slow() -> None:
 
     with pytest.raises(ValueError, match="smaller"):
         MACD(fast=20, slow=20, signal_period=9)
-
