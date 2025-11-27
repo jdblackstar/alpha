@@ -61,10 +61,10 @@ def test_macd_line_is_fast_minus_slow_ema() -> None:
     macd = MACD(fast=12, slow=26, signal_period=9)
     result = macd.compute(data)
 
-    # Manually compute EMAs
+    # Manually compute EMAs with min_periods to match implementation
     close_series = data["close"]
-    fast_ema = close_series.ewm(span=12, adjust=False).mean()
-    slow_ema = close_series.ewm(span=26, adjust=False).mean()
+    fast_ema = close_series.ewm(span=12, min_periods=12, adjust=False).mean()
+    slow_ema = close_series.ewm(span=26, min_periods=26, adjust=False).mean()
     expected_line = fast_ema - slow_ema
 
     pd.testing.assert_series_equal(
@@ -80,8 +80,8 @@ def test_macd_signal_is_ema_of_line() -> None:
     macd = MACD(fast=12, slow=26, signal_period=9)
     result = macd.compute(data)
 
-    # Signal should be EMA of the line
-    expected_signal = result.line.ewm(span=9, adjust=False).mean()
+    # Signal should be EMA of the line with min_periods
+    expected_signal = result.line.ewm(span=9, min_periods=9, adjust=False).mean()
 
     pd.testing.assert_series_equal(
         result.signal, expected_signal.rename("signal"), check_names=True
@@ -179,3 +179,31 @@ def test_macd_fast_must_be_less_than_slow() -> None:
 
     with pytest.raises(ValueError, match="smaller"):
         MACD(fast=20, slow=20, signal_period=9)
+
+
+def test_macd_has_correct_warmup_period() -> None:
+    """MACD components should have NaN for the expected warmup rows."""
+    close = [100.0 + i * 0.5 for i in range(50)]
+    data = _make_ohlcv(close)
+
+    fast, slow, signal_period = 12, 26, 9
+    macd = MACD(fast=fast, slow=slow, signal_period=signal_period)
+    result = macd.compute(data)
+
+    # MACD line: NaN for first (slow - 1) rows
+    line_nan_count = result.line.isna().sum()
+    assert line_nan_count == slow - 1, (
+        f"MACD line should have {slow - 1} NaN rows, got {line_nan_count}"
+    )
+
+    # Signal and histogram: NaN for first (slow + signal_period - 2) rows
+    expected_signal_nans = slow + signal_period - 2
+    signal_nan_count = result.signal.isna().sum()
+    hist_nan_count = result.histogram.isna().sum()
+
+    assert signal_nan_count == expected_signal_nans, (
+        f"Signal should have {expected_signal_nans} NaN rows, got {signal_nan_count}"
+    )
+    assert hist_nan_count == expected_signal_nans, (
+        f"Histogram should have {expected_signal_nans} NaN rows, got {hist_nan_count}"
+    )

@@ -122,22 +122,27 @@ class MACD:
 
         Returns:
             MACDResult containing line, signal, and histogram series.
-            The first `slow + signal_period - 1` rows will have NaN values
-            due to the EMA warmup period.
+            The MACD line will have NaN for the first `slow - 1` rows.
+            The signal and histogram will have NaN for the first
+            `slow + signal_period - 2` rows due to the EMA warmup period.
         """
         close: pd.Series = data["close"]
 
         # Exponential moving averages of price
         # Using adjust=False for consistency with standard MACD implementations
-        fast_ema = close.ewm(span=self.fast, adjust=False).mean()
-        slow_ema = close.ewm(span=self.slow, adjust=False).mean()
+        # min_periods ensures we don't compute from insufficient data
+        fast_ema = close.ewm(span=self.fast, min_periods=self.fast, adjust=False).mean()
+        slow_ema = close.ewm(span=self.slow, min_periods=self.slow, adjust=False).mean()
 
         # MACD line: difference between fast and slow EMAs
+        # Will be NaN until both EMAs have enough data (slow - 1 rows)
         line = fast_ema - slow_ema
         line.name = "macd"
 
         # Signal line: EMA of the MACD line
-        signal = line.ewm(span=self.signal_period, adjust=False).mean()
+        signal = line.ewm(
+            span=self.signal_period, min_periods=self.signal_period, adjust=False
+        ).mean()
         signal.name = "signal"
 
         # Histogram: difference between MACD and signal
