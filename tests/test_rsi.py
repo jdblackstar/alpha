@@ -25,7 +25,7 @@ def test_rsi_all_gains_approaches_100() -> None:
     # After warmup, RSI should be 100 (no losses)
     valid_values = result.dropna()
     assert len(valid_values) > 0
-    assert (valid_values == 100.0).all()
+    assert all(valid_values == 100.0)
 
 
 def test_rsi_all_losses_approaches_0() -> None:
@@ -40,7 +40,7 @@ def test_rsi_all_losses_approaches_0() -> None:
     # After warmup, RSI should be 0 (no gains)
     valid_values = result.dropna()
     assert len(valid_values) > 0
-    assert (valid_values == 0.0).all()
+    assert all(valid_values == 0.0)
 
 
 def test_rsi_balanced_movement_near_50() -> None:
@@ -75,8 +75,8 @@ def test_rsi_bounded_between_0_and_100() -> None:
     result = factor.compute(data)
 
     valid_values = result.dropna()
-    assert (valid_values >= 0.0).all()
-    assert (valid_values <= 100.0).all()
+    assert all(valid_values >= 0.0)
+    assert all(valid_values <= 100.0)
 
 
 def test_rsi_flat_prices_returns_50() -> None:
@@ -89,7 +89,7 @@ def test_rsi_flat_prices_returns_50() -> None:
 
     valid_values = result.dropna()
     assert len(valid_values) > 0
-    assert (valid_values == 50.0).all()
+    assert all(valid_values == 50.0)
 
 
 def test_rsi_respects_period_parameter() -> None:
