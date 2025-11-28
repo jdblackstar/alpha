@@ -49,6 +49,22 @@ class PortfolioBacktester:
             n = len(self._symbols)
             self._weights = {s: 1.0 / n for s in self._symbols}
         else:
+            # Validate that weights cover exactly the symbols in the data
+            weight_symbols = set(weights.keys())
+            data_symbols = set(self._symbols)
+
+            missing_from_weights = data_symbols - weight_symbols
+            if missing_from_weights:
+                raise ValueError(
+                    f"weights missing for symbols in data: {sorted(missing_from_weights)}"
+                )
+
+            extra_in_weights = weight_symbols - data_symbols
+            if extra_in_weights:
+                raise ValueError(
+                    f"weights provided for symbols not in data: {sorted(extra_in_weights)}"
+                )
+
             self._weights = weights
 
     def run(self, signals: Optional[pd.DataFrame] = None) -> pd.Series:

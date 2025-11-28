@@ -181,3 +181,29 @@ def test_raises_on_non_multiindex() -> None:
         assert "MultiIndex" in str(exc)
     else:
         raise AssertionError("Should raise TypeError for non-MultiIndex columns")
+
+
+def test_raises_on_incomplete_weights() -> None:
+    """Should raise if weights dict is missing symbols from data."""
+    prices = _prices()
+    incomplete_weights = {"SPY": 0.6, "BND": 0.4}  # Missing GLD
+    try:
+        PortfolioBacktester(prices, weights=incomplete_weights)
+    except ValueError as exc:
+        assert "missing" in str(exc).lower()
+        assert "GLD" in str(exc)
+    else:
+        raise AssertionError("Should raise ValueError for incomplete weights")
+
+
+def test_raises_on_extra_weights() -> None:
+    """Should raise if weights dict has symbols not in data."""
+    prices = _prices()
+    extra_weights = {"SPY": 0.5, "BND": 0.3, "GLD": 0.1, "QQQ": 0.1}
+    try:
+        PortfolioBacktester(prices, weights=extra_weights)
+    except ValueError as exc:
+        assert "not in data" in str(exc).lower()
+        assert "QQQ" in str(exc)
+    else:
+        raise AssertionError("Should raise ValueError for extra weights")
