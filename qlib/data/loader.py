@@ -184,3 +184,35 @@ class DataLoader:
     def _drop_nas(df: DataFrame) -> DataFrame:
         """Drop rows with missing values."""
         return df.dropna()
+
+    @staticmethod
+    def load_universe(
+        symbols: list[str],
+        start: Optional[str] = None,
+        end: Optional[str] = None,
+    ) -> DataFrame:
+        """
+        Load OHLCV data for multiple symbols.
+
+        Usage:
+            universe = DataLoader.load_universe(["SPY", "BND", "GLD"], start="2015-01-01")
+
+        Returns a DataFrame with MultiIndex columns: (symbol, field).
+        For example: universe["SPY", "close"] or universe.xs("close", axis=1, level=1).
+
+        Missing dates are forward-filled to align all symbols to a common index.
+        """
+        if not symbols:
+            raise ValueError("symbols list cannot be empty")
+
+        frames: dict[str, DataFrame] = {}
+        for symbol in symbols:
+            frames[symbol] = DataLoader.load(symbol, start=start, end=end)
+
+        # Concatenate with symbol as outer column level
+        combined = pd.concat(frames, axis=1)
+
+        # Align to common dates and forward-fill gaps
+        combined = combined.ffill()
+
+        return combined
