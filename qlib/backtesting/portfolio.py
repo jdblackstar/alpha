@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Optional
 
 import pandas as pd
+from pandas.tseries.frequencies import to_offset
 
 
 class PortfolioBacktester:
@@ -108,21 +109,25 @@ class PortfolioBacktester:
 
     def _build_rebalance_weights(self, index: pd.DatetimeIndex) -> pd.DataFrame:
         """Build a weight matrix that rebalances at the specified frequency."""
-        # Create a series of target weights
-        target = pd.Series(self._weights)
+        # Create a series of target weights aligned to symbols
+        target = pd.Series(self._weights, index=self._symbols, dtype=float)
 
         # Initialize weight matrix with zeros
         weight_matrix = pd.DataFrame(0.0, index=index, columns=self._symbols)
 
-        # Find rebalance dates
-        rebalance_dates = (
-            index.to_series().resample(self.rebalance_freq).first().dropna()
-        )
+        # Find the first available date for each rebalance period (e.g., first
+        # trading day of the month for "ME"). Using periods keeps us on the
+        # actual index rather than synthetic calendar endpoints.
+        freq_offset = to_offset(self.rebalance_freq)
+        period_code = freq_offset.rule_code
+        if period_code.endswith("E"):
+            period_code = period_code[:-1]
+        periods = pd.Series(index.to_period(period_code))
+        period_changes = periods.ne(periods.shift(1)).fillna(True).to_numpy()
+        rebalance_dates = index[period_changes]
 
         # Set target weights on rebalance dates
-        for date in rebalance_dates.values:
-            if date in weight_matrix.index:
-                weight_matrix.loc[date] = target
+        weight_matrix.loc[rebalance_dates, :] = target.to_numpy()
 
         # Forward-fill weights between rebalance dates
         weight_matrix = weight_matrix.replace(0.0, float("nan"))

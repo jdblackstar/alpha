@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import pandas as pd
 import pandas.testing as pdt
+from pandas.tseries.frequencies import to_offset
 
 from qlib.backtesting import PortfolioBacktester
 
@@ -67,20 +68,75 @@ def _prices() -> pd.DataFrame:
     return pd.concat({"SPY": spy, "BND": bnd, "GLD": gld}, axis=1)
 
 
+def _prices_multi_month() -> pd.DataFrame:
+    """Two-asset dataset spanning multiple months to test rebalancing."""
+    dates = pd.date_range("2024-01-25", periods=40, freq="D")
+
+    def _trend(base: float, step: float) -> list[float]:
+        return [base + i * step for i in range(len(dates))]
+
+    def _asset(base: float, step: float, volume: int) -> pd.DataFrame:
+        close = _trend(base, step)
+        return pd.DataFrame(
+            {
+                "open": close,
+                "high": [c + 0.5 for c in close],
+                "low": [c - 0.5 for c in close],
+                "close": close,
+                "volume": [volume] * len(dates),
+            },
+            index=dates,
+        )
+
+    aaa = _asset(100.0, 1.0, 1_000)
+    bbb = _asset(50.0, 0.5, 500)
+
+    return pd.concat({"AAA": aaa, "BBB": bbb}, axis=1)
+
+
+def _first_rebalance_dates(index: pd.DatetimeIndex, freq: str) -> pd.DatetimeIndex:
+    """Return the first timestamp in each period for a given frequency."""
+    offset = to_offset(freq)
+    period_code = offset.rule_code
+    if period_code.endswith("E"):
+        period_code = period_code[:-1]
+    periods = index.to_period(period_code)
+
+    seen: set[pd.Period] = set()
+    dates: list[pd.Timestamp] = []
+    for date, period in zip(index, periods, strict=True):
+        if period not in seen:
+            seen.add(period)
+            dates.append(date)
+    return pd.DatetimeIndex(dates)
+
+
+def _expected_equal_weight_returns(prices: pd.DataFrame, freq: str) -> pd.Series:
+    close = prices.xs("close", axis=1, level=1)
+    asset_returns = close.pct_change()
+    symbols = list(close.columns)
+    weight_matrix = pd.DataFrame(
+        float("nan"), index=asset_returns.index, columns=symbols
+    )
+
+    for date in _first_rebalance_dates(asset_returns.index, freq):
+        weight_matrix.loc[date] = 1.0 / len(symbols)
+
+    weight_matrix = weight_matrix.ffill().fillna(0.0)
+    positions = weight_matrix.shift(1)
+    expected = (positions * asset_returns).sum(axis=1)
+    expected.name = "portfolio_returns"
+    return expected
+
+
 def test_equal_weight_allocation() -> None:
     """Equal-weight should distribute returns evenly across all assets."""
     prices = _prices()
-    bt = PortfolioBacktester(prices, weights=None)
+    bt = PortfolioBacktester(prices, weights=None, rebalance_freq="ME")
     result = bt.run()
 
-    # Manually compute equal-weight returns
-    close = prices.xs("close", axis=1, level=1)
-    asset_returns = close.pct_change()
-    expected = asset_returns.mean(axis=1).shift(-1)  # shift back to align
-
-    # Compare from day 2 onward (first day has NaN from pct_change, second from shift)
-    assert result.name == "portfolio_returns"
-    assert len(result) == len(prices)
+    expected = _expected_equal_weight_returns(prices, freq="ME")
+    pdt.assert_series_equal(result, expected)
 
 
 def test_custom_weight_allocation() -> None:
@@ -126,6 +182,35 @@ def test_commission_application() -> None:
     sum_no_comm = result_no_comm.dropna().sum()
     sum_with_comm = result_with_comm.dropna().sum()
     assert sum_with_comm <= sum_no_comm
+
+
+def test_monthly_rebalance_hits_first_trading_day() -> None:
+    """Rebalance dates should align to the first available day of each period."""
+    prices = _prices_multi_month()
+    bt = PortfolioBacktester(prices, rebalance_freq="ME")
+    weights = bt._build_rebalance_weights(prices.index)
+
+    expected_dates = _first_rebalance_dates(prices.index, "ME")
+    target = pd.Series(
+        {symbol: 1.0 / len(weights.columns) for symbol in weights.columns},
+        name=None,
+    )
+
+    for date in expected_dates:
+        pdt.assert_series_equal(weights.loc[date], target, check_names=False)
+
+    # Should set weights at least once per period (no all-zero rows)
+    assert weights.loc[expected_dates].notna().all().all()
+
+
+def test_monthly_rebalance_returns_match_manual() -> None:
+    """Portfolio returns should reflect monthly rebalancing into equal weights."""
+    prices = _prices_multi_month()
+    bt = PortfolioBacktester(prices, rebalance_freq="ME")
+    result = bt.run()
+
+    expected = _expected_equal_weight_returns(prices, freq="ME")
+    pdt.assert_series_equal(result, expected)
 
 
 def test_signal_override() -> None:
