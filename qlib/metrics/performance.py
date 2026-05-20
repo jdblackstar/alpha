@@ -5,13 +5,13 @@ import pandas as pd
 
 
 def sharpe(
-    rets: pd.Series,
+    returns: pd.Series,
     annual_risk_free_rate: float = 0.0,
     annualization: int = 252,
 ) -> float:
     _validate_annualization(annualization)
     _validate_annual_rate("annual_risk_free_rate", annual_risk_free_rate)
-    clean = _clean_returns(rets)
+    clean = _clean_returns(returns)
     if len(clean) <= 1:
         return float("nan")
 
@@ -26,14 +26,14 @@ def sharpe(
 
 
 def sortino(
-    rets: pd.Series,
+    returns: pd.Series,
     annual_target_return: float = 0.0,
     annualization: int = 252,
 ) -> float:
     """Return annualized Sortino ratio using downside deviation below annual target."""
     _validate_annualization(annualization)
     _validate_annual_rate("annual_target_return", annual_target_return)
-    clean = _clean_returns(rets)
+    clean = _clean_returns(returns)
     n_periods = len(clean)
     if n_periods <= 1:
         return float("nan")
@@ -52,9 +52,9 @@ def sortino(
     return (excess.mean() / downside_deviation) * np.sqrt(annualization)
 
 
-def max_drawdown(rets: pd.Series) -> float:
+def max_drawdown(returns: pd.Series) -> float:
     """Return max drawdown as a negative decimal, including initial capital baseline."""
-    clean = _clean_returns(rets)
+    clean = _clean_returns(returns)
     if len(clean) <= 1:
         return float("nan")
 
@@ -69,20 +69,20 @@ def max_drawdown(rets: pd.Series) -> float:
     return drawdown.min()
 
 
-def _clean_returns(rets: pd.Series) -> pd.Series:
-    if not isinstance(rets, pd.Series):
-        raise TypeError("rets must be a pandas Series of periodic simple returns")
+def _clean_returns(returns: pd.Series) -> pd.Series:
+    if not isinstance(returns, pd.Series):
+        raise TypeError("returns must be a pandas Series of periodic simple returns")
 
-    clean = rets.dropna()
+    clean = returns.dropna()
     if clean.empty:
         return clean.astype(float)
 
     numeric = pd.to_numeric(clean, errors="coerce")
     if numeric.isna().any():
-        raise TypeError("rets must contain numeric return values")
+        raise TypeError("returns must contain numeric return values")
 
     if not np.isfinite(numeric.to_numpy()).all():
-        raise ValueError("rets must contain only finite return values")
+        raise ValueError("returns must contain only finite return values")
 
     return numeric
 
