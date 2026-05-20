@@ -12,50 +12,50 @@ def _returns() -> pd.Series:
 
 
 def test_sharpe_matches_manual() -> None:
-    rets = _returns()
-    expected = (rets.mean() / rets.std()) * np.sqrt(252)
-    assert np.isclose(sharpe(rets), expected)
+    returns = _returns()
+    expected = (returns.mean() / returns.std()) * np.sqrt(252)
+    assert np.isclose(sharpe(returns), expected)
 
 
 def test_sortino_uses_downside_deviation() -> None:
-    rets = _returns()
-    clean = rets.dropna()
+    returns = _returns()
+    clean = returns.dropna()
     downside = np.minimum(clean, 0.0)
     downside_dev = np.sqrt(np.sum(downside**2) / (len(clean) - 1))
     expected = (clean.mean() / downside_dev) * np.sqrt(252)
-    assert np.isclose(sortino(rets), expected)
+    assert np.isclose(sortino(returns), expected)
 
 
 def test_sortino_returns_nan_without_downside() -> None:
-    rets = pd.Series([0.01, 0.02, 0.03])
-    assert np.isnan(sortino(rets))
+    returns = pd.Series([0.01, 0.02, 0.03])
+    assert np.isnan(sortino(returns))
 
 
 def test_max_drawdown_returns_minimum() -> None:
-    rets = pd.Series([0.1, 0.05, -0.2, 0.01])
-    cumulative = (1 + rets).cumprod()
+    returns = pd.Series([0.1, 0.05, -0.2, 0.01])
+    cumulative = (1 + returns).cumprod()
     peak = cumulative.cummax()
     expected = ((cumulative - peak) / peak).min()
-    assert np.isclose(max_drawdown(rets), expected)
+    assert np.isclose(max_drawdown(returns), expected)
 
 
 def test_metrics_require_series_input() -> None:
-    with pytest.raises(TypeError, match="rets must be a pandas Series"):
+    with pytest.raises(TypeError, match="returns must be a pandas Series"):
         sharpe([0.01, 0.02])  # type: ignore[arg-type]
 
 
 def test_metrics_require_numeric_returns() -> None:
-    rets = pd.Series([0.01, "bad", 0.02])
+    returns = pd.Series([0.01, "bad", 0.02])
 
     with pytest.raises(TypeError, match="numeric return values"):
-        sortino(rets)
+        sortino(returns)
 
 
 def test_metrics_reject_non_finite_returns() -> None:
-    rets = pd.Series([0.01, np.inf, 0.02])
+    returns = pd.Series([0.01, np.inf, 0.02])
 
     with pytest.raises(ValueError, match="finite return values"):
-        max_drawdown(rets)
+        max_drawdown(returns)
 
 
 def test_sharpe_requires_positive_annualization() -> None:
