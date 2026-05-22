@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import warnings
+from numbers import Real
 
 import numpy as np
 import pandas as pd
@@ -8,7 +9,11 @@ import pandas as pd
 
 def cagr(start_value: float, end_value: float, years: float) -> float:
     """Return compound annual growth rate from start to end value."""
-    for name, value in [("start_value", start_value), ("end_value", end_value), ("years", years)]:
+    for name, value in [
+        ("start_value", start_value),
+        ("end_value", end_value),
+        ("years", years),
+    ]:
         _validate_positive(name, value)
     return (end_value / start_value) ** (1.0 / years) - 1.0
 
@@ -67,5 +72,9 @@ def _with_datetime_index(values: pd.Series) -> pd.Series:
 
 
 def _validate_positive(name: str, value: float) -> None:
+    if isinstance(value, bool) or not isinstance(value, Real):
+        raise TypeError(f"{name} must be numeric")
+    if not np.isfinite(value):
+        raise ValueError(f"{name} must be finite")
     if value <= 0:
         raise ValueError(f"{name} must be positive")

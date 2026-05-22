@@ -22,6 +22,22 @@ def test_cagr_requires_positive_inputs() -> None:
         cagr(100.0, 121.0, 0.0)
 
 
+def test_cagr_requires_finite_inputs() -> None:
+    with pytest.raises(ValueError, match="start_value must be finite"):
+        cagr(np.inf, 121.0, 2.0)
+
+    with pytest.raises(ValueError, match="end_value must be finite"):
+        cagr(100.0, np.nan, 2.0)
+
+    with pytest.raises(ValueError, match="years must be finite"):
+        cagr(100.0, 121.0, np.inf)
+
+
+def test_cagr_requires_numeric_inputs() -> None:
+    with pytest.raises(TypeError, match="start_value must be numeric"):
+        cagr(True, 121.0, 2.0)
+
+
 def test_trailing_cagr_uses_calendar_lookback() -> None:
     values = pd.Series(
         [10.0, 20.0, 40.0],
@@ -109,3 +125,23 @@ def test_trailing_cagr_requires_positive_years() -> None:
 
     with pytest.raises(ValueError, match="years must be positive"):
         trailing_cagr(values, years=0.0)
+
+
+def test_trailing_cagr_requires_finite_years() -> None:
+    values = pd.Series(
+        [10.0, 20.0],
+        index=pd.to_datetime(["2022-01-01", "2023-01-01"]),
+    )
+
+    with pytest.raises(ValueError, match="years must be finite"):
+        trailing_cagr(values, years=np.inf)
+
+
+def test_trailing_cagr_requires_numeric_years() -> None:
+    values = pd.Series(
+        [10.0, 20.0],
+        index=pd.to_datetime(["2022-01-01", "2023-01-01"]),
+    )
+
+    with pytest.raises(TypeError, match="years must be numeric"):
+        trailing_cagr(values, years=True)

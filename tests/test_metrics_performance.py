@@ -63,6 +63,16 @@ def test_sharpe_requires_positive_annualization() -> None:
         sharpe(_returns(), annualization=0)
 
 
+def test_sharpe_requires_finite_annualization() -> None:
+    with pytest.raises(ValueError, match="annualization must be finite"):
+        sharpe(_returns(), annualization=np.inf)
+
+
+def test_sharpe_requires_numeric_annualization() -> None:
+    with pytest.raises(TypeError, match="annualization must be numeric"):
+        sharpe(_returns(), annualization=True)
+
+
 def test_sortino_requires_positive_annualization() -> None:
     with pytest.raises(ValueError, match="annualization must be positive"):
         sortino(_returns(), annualization=0)
@@ -73,6 +83,21 @@ def test_sharpe_requires_risk_free_rate_above_negative_one() -> None:
         sharpe(_returns(), annual_risk_free_rate=-1.0)
 
 
+def test_sharpe_requires_finite_risk_free_rate() -> None:
+    with pytest.raises(ValueError, match="annual_risk_free_rate must be finite"):
+        sharpe(_returns(), annual_risk_free_rate=np.nan)
+
+
+def test_sharpe_requires_numeric_risk_free_rate() -> None:
+    with pytest.raises(TypeError, match="annual_risk_free_rate must be numeric"):
+        sharpe(_returns(), annual_risk_free_rate=True)
+
+
 def test_sortino_requires_target_return_above_negative_one() -> None:
     with pytest.raises(ValueError, match="annual_target_return"):
         sortino(_returns(), annual_target_return=-1.0)
+
+
+def test_sortino_requires_finite_target_return() -> None:
+    with pytest.raises(ValueError, match="annual_target_return must be finite"):
+        sortino(_returns(), annual_target_return=np.inf)

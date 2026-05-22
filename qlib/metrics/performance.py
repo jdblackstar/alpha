@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from numbers import Real
+
 import numpy as np
 import pandas as pd
 
@@ -16,13 +18,13 @@ def sharpe(
         return float("nan")
 
     rf_per_period = (1 + annual_risk_free_rate) ** (1 / annualization) - 1
-    excess = clean - rf_per_period
+    excess = clean.to_numpy(dtype=float) - rf_per_period
 
-    vol = excess.std()
+    vol = np.std(excess, ddof=1)
     if np.isclose(vol, 0.0):
         return float("nan")
 
-    return (excess.mean() / vol) * np.sqrt(annualization)
+    return (np.mean(excess) / vol) * np.sqrt(annualization)
 
 
 def sortino(
@@ -40,7 +42,7 @@ def sortino(
 
     target_per_period = (1 + annual_target_return) ** (1 / annualization) - 1
 
-    excess = clean - target_per_period
+    excess = clean.to_numpy(dtype=float) - target_per_period
     downside = np.minimum(excess, 0.0)
 
     downside_variance = np.sum(downside**2) / (n_periods - 1)
@@ -58,15 +60,14 @@ def max_drawdown(returns: pd.Series) -> float:
     if len(clean) <= 1:
         return float("nan")
 
-    equity_curve = (1.0 + clean).cumprod()
-    equity_curve = pd.concat(
-        [pd.Series([1.0], index=[clean.index[0]]), equity_curve]
+    equity_curve = np.concatenate(
+        ([1.0], np.multiply.accumulate(1.0 + clean.to_numpy(dtype=float)))
     )
 
-    running_peak = equity_curve.cummax()
+    running_peak = np.maximum.accumulate(equity_curve)
     drawdown = equity_curve / running_peak - 1.0
 
-    return drawdown.min()
+    return float(np.min(drawdown))
 
 
 def _clean_returns(returns: pd.Series) -> pd.Series:
@@ -88,10 +89,23 @@ def _clean_returns(returns: pd.Series) -> pd.Series:
 
 
 def _validate_annualization(annualization: int) -> None:
-    if annualization <= 0:
-        raise ValueError("annualization must be positive")
+    _validate_positive("annualization", annualization)
 
 
 def _validate_annual_rate(name: str, value: float) -> None:
+    _validate_finite(name, value)
     if value <= -1.0:
         raise ValueError(f"{name} must be greater than -1.0")
+
+
+def _validate_positive(name: str, value: float) -> None:
+    _validate_finite(name, value)
+    if value <= 0:
+        raise ValueError(f"{name} must be positive")
+
+
+def _validate_finite(name: str, value: float) -> None:
+    if isinstance(value, bool) or not isinstance(value, Real):
+        raise TypeError(f"{name} must be numeric")
+    if not np.isfinite(value):
+        raise ValueError(f"{name} must be finite")
