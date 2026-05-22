@@ -1,10 +1,11 @@
 from __future__ import annotations
 
 import warnings
-from numbers import Real
 
 import numpy as np
 import pandas as pd
+
+from qlib.validation import validate_positive
 
 
 def cagr(start_value: float, end_value: float, years: float) -> float:
@@ -14,13 +15,13 @@ def cagr(start_value: float, end_value: float, years: float) -> float:
         ("end_value", end_value),
         ("years", years),
     ]:
-        _validate_positive(name, value)
+        validate_positive(name, value)
     return (end_value / start_value) ** (1.0 / years) - 1.0
 
 
 def trailing_cagr(values: pd.Series, *, years: float) -> pd.Series:
     """Return trailing CAGR at each timestamp using a calendar lookback."""
-    _validate_positive("years", years)
+    validate_positive("years", years)
     clean = _clean_values(values)
     output = pd.Series(float("nan"), index=clean.index, name=f"trailing_{years:g}y_cagr")
 
@@ -69,12 +70,3 @@ def _with_datetime_index(values: pd.Series) -> pd.Series:
         clean.index = index
         clean = clean.sort_index()
     return clean
-
-
-def _validate_positive(name: str, value: float) -> None:
-    if isinstance(value, bool) or not isinstance(value, Real):
-        raise TypeError(f"{name} must be numeric")
-    if not np.isfinite(value):
-        raise ValueError(f"{name} must be finite")
-    if value <= 0:
-        raise ValueError(f"{name} must be positive")

@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-from numbers import Real
-
 import numpy as np
 import pandas as pd
+
+from qlib.validation import validate_finite, validate_positive
 
 
 def sharpe(
@@ -89,23 +89,10 @@ def _clean_returns(returns: pd.Series) -> pd.Series:
 
 
 def _validate_annualization(annualization: int) -> None:
-    _validate_positive("annualization", annualization)
+    validate_positive("annualization", annualization)
 
 
 def _validate_annual_rate(name: str, value: float) -> None:
-    _validate_finite(name, value)
+    validate_finite(name, value)
     if value <= -1.0:
         raise ValueError(f"{name} must be greater than -1.0")
-
-
-def _validate_positive(name: str, value: float) -> None:
-    _validate_finite(name, value)
-    if value <= 0:
-        raise ValueError(f"{name} must be positive")
-
-
-def _validate_finite(name: str, value: float) -> None:
-    if isinstance(value, bool) or not isinstance(value, Real):
-        raise TypeError(f"{name} must be numeric")
-    if not np.isfinite(value):
-        raise ValueError(f"{name} must be finite")
